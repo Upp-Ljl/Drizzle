@@ -6,7 +6,9 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
   DATABASE_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
-  CRON_SECRET: z.string().min(32).optional(),
+  // Phase 1 doesn't use CRON_SECRET. Phase 2 cron will validate min-length
+  // at the request handler, not at module load. Leave permissive here.
+  CRON_SECRET: z.string().optional(),
   DEMO_MODE: z
     .enum(['true', 'false'])
     .default('true')

@@ -46,3 +46,4 @@ tspr-output/
 
 # tspr fixture (gitignored secrets, not the public login fixture)
 tspr/.secrets
+screenshots/
