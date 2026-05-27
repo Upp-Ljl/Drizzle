@@ -72,6 +72,11 @@ export default async function MemeDetailPage({ params }: PageProps) {
           firstSeenN: meme.firstSeenN,
           oddsX: meme.oddsX,
           status: meme.status,
+          kind: (meme.kind as 'meme' | 'topic') ?? 'meme',
+          templatePattern: meme.templatePattern,
+          derivativeCount: meme.derivativeCount,
+          thresholdN: meme.thresholdN,
+          topicQuestion: meme.topicQuestion,
         }}
         recentBets={recentBets}
         backersCount={backersCount}

@@ -29,6 +29,9 @@ const TombstoneRowSchema = z.object({
   memeId: z.number().int(),
   memeTitle: z.string(),
   memeSlug: z.string(),
+  kind: z.enum(['meme', 'topic']),
+  topicQuestion: z.string().nullable(),
+  thresholdN: z.number().int().nullable(),
   epitaph: z.string().nullable(),
   maxN: z.number().int(),
   backersCount: z.number().int(),
@@ -80,6 +83,9 @@ export async function GET(req: Request) {
       createdAt: graveyardTable.createdAt,
       memeTitle: memesTable.title,
       memeSlug: memesTable.slug,
+      kind: memesTable.kind,
+      topicQuestion: memesTable.topicQuestion,
+      thresholdN: memesTable.thresholdN,
     })
     .from(graveyardTable)
     .innerJoin(memesTable, eq(memesTable.id, graveyardTable.memeId))
@@ -96,6 +102,9 @@ export async function GET(req: Request) {
     memeId: r.memeId,
     memeTitle: r.memeTitle,
     memeSlug: r.memeSlug,
+    kind: (r.kind as 'meme' | 'topic') ?? 'meme',
+    topicQuestion: r.topicQuestion,
+    thresholdN: r.thresholdN,
     epitaph: r.epitaph,
     maxN: r.maxN,
     backersCount: r.backersCount,

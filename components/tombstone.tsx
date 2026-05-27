@@ -72,15 +72,44 @@ export function Tombstone({ row, onFlowered }: Props) {
         aria-controls={`tombstone-body-${row.id}`}
       >
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="text-base font-serif text-ink truncate">
-            ⸺ {row.memeTitle} ⸺
-          </h3>
+          <div className="flex items-center gap-2 min-w-0">
+            {row.kind === 'topic' ? (
+              <span
+                className="px-2 py-0.5 rounded-sm bg-forest/15 text-forest text-[10px] font-mono uppercase tracking-wider shrink-0"
+                data-testid="tombstone-kind-topic"
+              >
+                话题
+              </span>
+            ) : (
+              <span
+                className="px-2 py-0.5 rounded-sm bg-coral/15 text-coral text-[10px] font-mono uppercase tracking-wider shrink-0"
+                data-testid="tombstone-kind-meme"
+              >
+                梗
+              </span>
+            )}
+            <h3 className="text-base font-serif text-ink truncate">
+              ⸺ {row.memeTitle} ⸺
+            </h3>
+          </div>
           <span className="text-xs text-muted font-mono shrink-0">
             #{row.id.toString().padStart(4, '0')}
           </span>
         </div>
+        {row.kind === 'topic' && row.topicQuestion && (
+          <p className="italic text-xs text-muted font-sans mt-1">
+            {row.topicQuestion}
+          </p>
+        )}
         <div className="mt-1 text-xs text-muted font-sans">
-          最高热度 <span className="font-mono">{formatN(row.maxN)}</span>
+          {row.kind === 'topic' ? '峰值讨论度' : '最高热度'}{' '}
+          <span className="font-mono">{formatN(row.maxN)}</span>
+          {row.kind === 'topic' && row.thresholdN ? (
+            <>
+              <span className="mx-2">·</span>
+              阈值 <span className="font-mono">{formatN(row.thresholdN)}</span>
+            </>
+          ) : null}
           <span className="mx-2">·</span>
           看好 <span className="font-mono">{row.backersCount}</span> 人
           <span className="mx-2">·</span>

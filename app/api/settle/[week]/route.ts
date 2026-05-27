@@ -56,18 +56,26 @@ export async function GET(
     .from(memesTable)
     .where(eq(memesTable.weekId, weekRow.id));
 
-  const brokeMemes = memeRows
-    .filter((m) => m.status === 'broke')
-    .map((m) => ({
-      id: m.id,
-      title: m.title,
-      slug: m.slug,
-      sourcePlatform: m.sourcePlatform,
-      firstSeenN: m.firstSeenN,
-      currentN: m.currentN,
-      oddsX: m.oddsX,
-      verdictSource: m.verdictSource,
-    }));
+  const mapBroke = (m: (typeof memeRows)[number]) => ({
+    id: m.id,
+    title: m.title,
+    slug: m.slug,
+    sourcePlatform: m.sourcePlatform,
+    firstSeenN: m.firstSeenN,
+    currentN: m.currentN,
+    oddsX: m.oddsX,
+    verdictSource: m.verdictSource,
+    kind: (m.kind as 'meme' | 'topic') ?? 'meme',
+    templatePattern: m.templatePattern,
+    derivativeCount: m.derivativeCount,
+    topicQuestion: m.topicQuestion,
+    thresholdN: m.thresholdN,
+  });
+
+  const brokeRows = memeRows.filter((m) => m.status === 'broke');
+  const brokeMemes = brokeRows.map(mapBroke);
+  const memesBroke = brokeRows.filter((m) => m.kind !== 'topic').map(mapBroke);
+  const topicsBroke = brokeRows.filter((m) => m.kind === 'topic').map(mapBroke);
 
   // dead 梗：含 `in_graveyard` (已立碑) 也展示。LEFT JOIN graveyard for linking.
   const deadCandidates = memeRows.filter(
@@ -79,7 +87,7 @@ export async function GET(
       : [];
   const graveByMeme = new Map(graveRows.map((g) => [g.memeId, g]));
 
-  const deadMemes = deadCandidates.map((m) => {
+  const mapDead = (m: (typeof memeRows)[number]) => {
     const g = graveByMeme.get(m.id);
     return {
       id: m.id,
@@ -87,8 +95,21 @@ export async function GET(
       slug: m.slug,
       currentN: m.currentN,
       graveyardId: g?.id ?? null,
+      kind: (m.kind as 'meme' | 'topic') ?? 'meme',
+      templatePattern: m.templatePattern,
+      derivativeCount: m.derivativeCount,
+      topicQuestion: m.topicQuestion,
+      thresholdN: m.thresholdN,
     };
-  });
+  };
+
+  const deadMemes = deadCandidates.map(mapDead);
+  const memesDead = deadCandidates
+    .filter((m) => m.kind !== 'topic')
+    .map(mapDead);
+  const topicsDead = deadCandidates
+    .filter((m) => m.kind === 'topic')
+    .map(mapDead);
 
   // user bets (only if logged in)
   const user = await getServerUser();
@@ -145,6 +166,10 @@ export async function GET(
     },
     brokeMemes,
     deadMemes,
+    memesBroke,
+    memesDead,
+    topicsBroke,
+    topicsDead,
     editorialNotes: weekRow.editorialNotes,
     userBets,
   });

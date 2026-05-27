@@ -23,6 +23,8 @@ type Props = {
   memeTitle: string;
   oddsX: number;
   currentN: number;
+  kind?: 'meme' | 'topic';
+  thresholdN?: number | null;
 };
 
 type BetResponse = {
@@ -56,7 +58,15 @@ async function postBet(memeId: number, amount: number): Promise<BetResponse> {
   return (await res.json()) as BetResponse;
 }
 
-export function BetForm({ memeId, memeTitle, oddsX, currentN }: Props) {
+export function BetForm({
+  memeId,
+  memeTitle,
+  oddsX,
+  currentN,
+  kind = 'meme',
+  thresholdN = null,
+}: Props) {
+  const isTopic = kind === 'topic';
   const pathname = usePathname() ?? `/meme/${memeId}`;
   const requireAuth = useRequireAuth();
 
@@ -120,9 +130,23 @@ export function BetForm({ memeId, memeTitle, oddsX, currentN }: Props) {
         backerRank={success.backerRank}
         memeTitle={memeTitle}
         state="pending"
+        kind={kind}
+        thresholdN={thresholdN}
       />
     );
   }
+
+  const buttonLabel = submitting
+    ? '押注中…'
+    : isTopic
+      ? `押 ${amount} 币 YES`
+      : `押 ${amount} 币`;
+
+  const snapshotLine = isTopic
+    ? `诞生证 N 值预览：押下瞬间会快照当前讨论度 N = ${currentN.toLocaleString()}${
+        thresholdN ? `（阈值 ${thresholdN.toLocaleString()}）` : ''
+      }。`
+    : `诞生证 N 值预览：押下瞬间会快照当前 N = ${currentN.toLocaleString()}。`;
 
   return (
     <div className="card p-4 space-y-4" data-testid="bet-form">
@@ -153,9 +177,7 @@ export function BetForm({ memeId, memeTitle, oddsX, currentN }: Props) {
           <div className="font-serif text-lg">{potential} 币</div>
         </div>
       </div>
-      <div className="text-xs text-muted">
-        诞生证 N 值预览：押下瞬间会快照当前 N = {currentN.toLocaleString()}。
-      </div>
+      <div className="text-xs text-muted">{snapshotLine}</div>
       <Button
         variant="primary"
         className="w-full"
@@ -163,7 +185,7 @@ export function BetForm({ memeId, memeTitle, oddsX, currentN }: Props) {
         disabled={submitting}
         data-testid="bet-submit"
       >
-        {submitting ? '押注中…' : `押 ${amount} 币`}
+        {buttonLabel}
       </Button>
       {error && (
         <p className="text-sm text-rust" data-testid="bet-error">

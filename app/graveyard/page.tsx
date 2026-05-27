@@ -65,12 +65,55 @@ export default function GraveyardPage() {
       )}
 
       {data && data.items.length > 0 && (
-        <div className="space-y-3">
-          {data.items.map((row) => (
-            <div key={row.id} id={`meme-${row.memeId}`}>
-              <Tombstone row={row} />
-            </div>
-          ))}
+        <div className="space-y-8">
+          {(() => {
+            const memeRows = data.items.filter((r) => r.kind !== 'topic');
+            const topicRows = data.items.filter((r) => r.kind === 'topic');
+            return (
+              <>
+                <section
+                  className="space-y-3"
+                  data-testid="graveyard-section-meme"
+                >
+                  <h2 className="text-lg font-serif text-ink border-b border-warmline pb-2">
+                    🔥 热梗坟场
+                    <span className="ml-2 text-xs text-muted font-mono">
+                      {memeRows.length}
+                    </span>
+                  </h2>
+                  {memeRows.length === 0 ? (
+                    <p className="text-sm text-muted">本页无梗墓碑。</p>
+                  ) : (
+                    memeRows.map((row) => (
+                      <div key={row.id} id={`meme-${row.memeId}`}>
+                        <Tombstone row={row} />
+                      </div>
+                    ))
+                  )}
+                </section>
+                <section
+                  className="space-y-3"
+                  data-testid="graveyard-section-topic"
+                >
+                  <h2 className="text-lg font-serif text-ink border-b border-warmline pb-2">
+                    📰 话题坟场
+                    <span className="ml-2 text-xs text-muted font-mono">
+                      {topicRows.length}
+                    </span>
+                  </h2>
+                  {topicRows.length === 0 ? (
+                    <p className="text-sm text-muted">本页无话题墓碑。</p>
+                  ) : (
+                    topicRows.map((row) => (
+                      <div key={row.id} id={`meme-${row.memeId}`}>
+                        <Tombstone row={row} />
+                      </div>
+                    ))
+                  )}
+                </section>
+              </>
+            );
+          })()}
         </div>
       )}
 

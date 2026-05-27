@@ -62,5 +62,15 @@ export async function GET(
     .from(bets)
     .where(and(eq(bets.memeId, memeId), isNull(bets.cancelledAt)));
 
-  return NextResponse.json({ meme, recentBets, backersCount });
+  // Explicitly include kind-aware fields so consumers don't rely on raw row shape.
+  const memePayload = {
+    ...meme,
+    kind: meme.kind,
+    templatePattern: meme.templatePattern,
+    derivativeCount: meme.derivativeCount,
+    thresholdN: meme.thresholdN,
+    topicQuestion: meme.topicQuestion,
+  };
+
+  return NextResponse.json({ meme: memePayload, recentBets, backersCount });
 }

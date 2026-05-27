@@ -67,10 +67,15 @@ CREATE TABLE IF NOT EXISTS "graveyard" (
 CREATE TABLE IF NOT EXISTS "memes" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"week_id" integer NOT NULL,
+	"kind" text DEFAULT 'meme' NOT NULL,
 	"title" text NOT NULL,
 	"slug" text NOT NULL,
 	"source_url" text,
 	"source_platform" text DEFAULT 'other' NOT NULL,
+	"template_pattern" text,
+	"derivative_count" integer DEFAULT 0 NOT NULL,
+	"threshold_n" integer,
+	"topic_question" text,
 	"first_seen_n" integer DEFAULT 0 NOT NULL,
 	"current_n" integer DEFAULT 0 NOT NULL,
 	"odds_x" real DEFAULT 2 NOT NULL,
@@ -260,5 +265,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS "flowers_grave_user_day_idx" ON "flowers" USIN
 CREATE UNIQUE INDEX IF NOT EXISTS "follows_kol_follower_idx" ON "follows" USING btree ("kol_id","follower_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "memes_week_id_idx" ON "memes" USING btree ("week_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "memes_status_idx" ON "memes" USING btree ("status");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "memes_kind_idx" ON "memes" USING btree ("kind");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "signals_tier_idx" ON "signals" USING btree ("tier");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "weeks_status_idx" ON "weeks" USING btree ("status");

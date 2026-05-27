@@ -1,20 +1,26 @@
 // @screen 首页 (今日气象)
 //
-// Server component — 直接调 DB 拿初始数据，传给 MemeTable (client)。
+// Server component — 直接调 DB 拿初始数据，传给 BoardTabs (client)。
 // 浏览全程零门槛，符合 PRODUCT-SPEC §1 决策 #2。
+//
+// v0.2 双板：?kind=meme (default) | ?kind=topic
 
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { Countdown } from '@/components/countdown';
-import { WeatherHeader } from '@/components/weather-header';
-import { MemeTable } from '@/components/meme-table';
+import { BoardTabs } from '@/components/board-tabs';
 import { TickerStrip } from '@/components/ticker-strip';
 import { requireDb } from '@/lib/db/client';
 import { memes as memesTable, weeks as weeksTable } from '@/lib/db/schema';
-import { computeHeaderCards, type MemesApiResponse, type MemeRow } from '@/app/api/memes/route';
+import {
+  computeHeaderCards,
+  type Kind,
+  type MemesApiResponse,
+  type MemeRow,
+} from '@/app/api/memes/route';
 
 export const dynamic = 'force-dynamic';
 
-async function loadInitial(): Promise<MemesApiResponse> {
+async function loadInitial(kind: Kind): Promise<MemesApiResponse> {
   const db = requireDb();
 
   const openWeek = await db
@@ -38,22 +44,30 @@ async function loadInitial(): Promise<MemesApiResponse> {
   if (!weekRow) {
     return {
       week: null,
+      kind,
       memes: [],
       headerCards: { high: null, low: null, anomaly: null },
     };
   }
 
+  const sortColumn = kind === 'meme' ? memesTable.derivativeCount : memesTable.currentN;
+
   const rawMemes = await db
     .select()
     .from(memesTable)
-    .where(eq(memesTable.weekId, weekRow.id))
-    .orderBy(desc(memesTable.currentN));
+    .where(and(eq(memesTable.weekId, weekRow.id), eq(memesTable.kind, kind)))
+    .orderBy(desc(sortColumn));
 
   const memes: MemeRow[] = rawMemes.map((m) => ({
     id: m.id,
     slug: m.slug,
     title: m.title,
     sourcePlatform: m.sourcePlatform,
+    kind: m.kind as Kind,
+    templatePattern: m.templatePattern,
+    derivativeCount: m.derivativeCount,
+    thresholdN: m.thresholdN,
+    topicQuestion: m.topicQuestion,
     firstSeenN: m.firstSeenN,
     currentN: m.currentN,
     oddsX: m.oddsX,
@@ -70,20 +84,37 @@ async function loadInitial(): Promise<MemesApiResponse> {
       settlesAt: weekRow.settlesAt.toISOString(),
       status: weekRow.status,
     },
+    kind,
     memes,
-    headerCards: computeHeaderCards(memes),
+    headerCards: computeHeaderCards(memes, kind),
   };
 }
 
-export default async function HomePage() {
+function parseKind(value: string | string[] | undefined): Kind {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === 'topic' ? 'topic' : 'meme';
+}
+
+type SearchParams = Record<string, string | string[] | undefined>;
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: SearchParams | Promise<SearchParams>;
+}) {
+  // Next 15: searchParams is async. Support both shapes.
+  const resolved = (await Promise.resolve(searchParams)) ?? {};
+  const kind = parseKind(resolved.kind);
+
   let initial: MemesApiResponse;
   try {
-    initial = await loadInitial();
+    initial = await loadInitial(kind);
   } catch (err) {
     // DB 未配置时不让首页爆——给空骨架，提示用户 .env.local 未填。
     console.warn('[home] failed to load initial data:', err);
     initial = {
       week: null,
+      kind,
       memes: [],
       headerCards: { high: null, low: null, anomaly: null },
     };
@@ -104,15 +135,9 @@ export default async function HomePage() {
         </p>
       </header>
 
-      <WeatherHeader
-        high={initial.headerCards.high}
-        low={initial.headerCards.low}
-        anomaly={initial.headerCards.anomaly}
-      />
-
       <TickerStrip />
 
-      <MemeTable initial={initial} />
+      <BoardTabs kind={kind} initial={initial} />
     </div>
   );
 }

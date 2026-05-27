@@ -77,6 +77,8 @@ export const memes = pgTable(
     weekId: integer('week_id')
       .notNull()
       .references(() => weeks.id),
+    /** Board: 'meme' = 热梗预测 (模板/格式); 'topic' = 热点话题 (娱乐事件). */
+    kind: text('kind', { enum: ['meme', 'topic'] }).notNull().default('meme'),
     title: text('title').notNull(),
     slug: text('slug').notNull().unique(),
     sourceUrl: text('source_url'),
@@ -85,6 +87,14 @@ export const memes = pgTable(
     })
       .notNull()
       .default('other'),
+    /** For meme kind: 模板/句式 e.g. "X 不 X". Null for topic kind. */
+    templatePattern: text('template_pattern'),
+    /** For meme kind: 二创数. Mirrors meaning of currentN for topic kind. */
+    derivativeCount: integer('derivative_count').notNull().default(0),
+    /** For topic kind: 阈值 — the N to beat by Sunday. Null for meme kind. */
+    thresholdN: integer('threshold_n'),
+    /** For topic kind: 完整 Y/N 疑问句. Null for meme kind. */
+    topicQuestion: text('topic_question'),
     firstSeenN: integer('first_seen_n').notNull().default(0),
     currentN: integer('current_n').notNull().default(0),
     oddsX: real('odds_x').notNull().default(2),
@@ -102,6 +112,7 @@ export const memes = pgTable(
   (t) => ({
     weekIdIdx: index('memes_week_id_idx').on(t.weekId),
     statusIdx: index('memes_status_idx').on(t.status),
+    kindIdx: index('memes_kind_idx').on(t.kind),
   }),
 );
 

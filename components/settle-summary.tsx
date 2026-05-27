@@ -16,6 +16,10 @@ type Props = {
   brokeCount: number;
   deadCount: number;
   userBets: UserBet[] | null;
+  memeBrokeCount?: number;
+  memeDeadCount?: number;
+  topicBrokeCount?: number;
+  topicDeadCount?: number;
 };
 
 /**
@@ -28,7 +32,16 @@ export function SettleSummary({
   brokeCount,
   deadCount,
   userBets,
+  memeBrokeCount,
+  memeDeadCount,
+  topicBrokeCount,
+  topicDeadCount,
 }: Props) {
+  const hasSplit =
+    typeof memeBrokeCount === 'number' &&
+    typeof memeDeadCount === 'number' &&
+    typeof topicBrokeCount === 'number' &&
+    typeof topicDeadCount === 'number';
   const totalBets = userBets?.length ?? 0;
   const hits = userBets?.filter((b) => (b.settledPayout ?? 0) > 0).length ?? 0;
   const totalStake = userBets?.reduce((s, b) => s + b.amount, 0) ?? 0;
@@ -47,6 +60,12 @@ export function SettleSummary({
             {status}
           </span>
         </div>
+        {hasSplit && (
+          <p className="text-xs text-muted font-sans">
+            🔥 热梗 命中 {memeBrokeCount} · 翻车 {memeDeadCount} ｜ 📰 话题
+            命中 {topicBrokeCount} · 翻车 {topicDeadCount}
+          </p>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <Stat label="破圈" value={String(brokeCount)} accent="forest" />
           <Stat label="翻车" value={String(deadCount)} accent="coral" />

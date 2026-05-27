@@ -1,5 +1,5 @@
 /**
- * Deterministic seed for Phase 1.
+ * Deterministic seed — v0.2 dual board (热梗 + 热点话题).
  *
  * Usage: pnpm db:seed
  *
@@ -7,26 +7,30 @@
  * Does NOT touch auth.users (Supabase-managed).
  *
  * Generates:
- *   - 3 weeks (week_number 45, 46, 47) → 45+46 settled, 47 open (current)
- *   - 30 memes (10 in each week)
- *   - 5 signals
- *   - 5 graveyard entries (from settled-dead memes)
- *   - ~20 mock bets (denormalized display_name, null user_id)
+ *   - 3 weeks (45, 46, 47) — 45+46 settled, 47 open (current)
+ *   - kind='meme'  current pool: 10 真梗 templates
+ *   - kind='topic' current pool: 8 娱乐话题 (Y/N 类，会否破阈值)
+ *   - 5 signals (radar)
+ *   - 8 graveyard entries (mix of dead memes + dead topics)
+ *   - ~16 mock ticker bets (denormalized display_name, null user_id)
  */
 
 // Run with: pnpm db:seed  (uses Node --env-file=.env.local)
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { eq } from 'drizzle-orm';
 import * as schema from './schema';
 import {
-  FAKE_MEMES_CURRENT_WEEK,
-  FAKE_MEMES_PRIOR_WEEK_BROKE,
-  FAKE_MEMES_PRIOR_WEEK_DEAD,
-  FAKE_SIGNALS,
-  FAKE_GRAVEYARD,
-  FAKE_TICKER_BETS,
-} from '../memes/sources/fake';
+  FAKE_MEMES_CURRENT,
+  FAKE_MEMES_PRIOR_BROKE,
+  FAKE_MEMES_PRIOR_DEAD,
+  type FakeMeme,
+} from '../memes/sources/fake-memes';
+import {
+  FAKE_TOPICS_CURRENT,
+  FAKE_TOPICS_PRIOR_BROKE,
+  FAKE_TOPICS_PRIOR_DEAD,
+  type FakeTopic,
+} from '../memes/sources/fake-topics';
 import { oddsForN } from '../memes/score';
 import { randomUUID } from 'node:crypto';
 
@@ -35,6 +39,62 @@ if (!url) throw new Error('DATABASE_URL is not set');
 
 const sql = postgres(url, { prepare: false, max: 5 });
 const db = drizzle(sql, { schema });
+
+const FAKE_SIGNALS = [
+  {
+    source: 'bilibili' as const,
+    candidateTitle: '"X 也是有上限的"',
+    score: 92,
+    tier: 'red' as const,
+    authorHandle: '@老六本六',
+    authorFollowers: 1_820,
+    growth24h: 4.8,
+  },
+  {
+    source: 'xhs' as const,
+    candidateTitle: '"我妈让我先 X 再 Y"',
+    score: 76,
+    tier: 'yellow' as const,
+    authorHandle: '@老母亲日记',
+    authorFollowers: 12_400,
+    growth24h: 2.1,
+  },
+  {
+    source: 'douyin' as const,
+    candidateTitle: '"X，但是 Y" 反差体',
+    score: 64,
+    tier: 'yellow' as const,
+    authorHandle: '@错位男孩',
+    authorFollowers: 8_100,
+    growth24h: 1.7,
+  },
+  {
+    source: 'weibo' as const,
+    candidateTitle: '"X 我的命名权我做主"',
+    score: 41,
+    tier: 'green' as const,
+    authorHandle: null,
+    authorFollowers: null,
+    growth24h: 0.9,
+  },
+  {
+    source: 'bilibili' as const,
+    candidateTitle: '"内娱已经 X 到 Y 了"',
+    score: 35,
+    tier: 'green' as const,
+    authorHandle: '@饭圈老妖',
+    authorFollowers: 940,
+    growth24h: 0.6,
+  },
+];
+
+const FAKE_EPITAPHS: Record<string, { epitaph: string; backersCount: number }> = {
+  'dog-goes-to-work': { epitaph: '狗上班那天，梗也下班了。', backersCount: 1_247 },
+  'morning-c-evening-a': { epitaph: '抖机灵能上热搜，扛不住一周。', backersCount: 540 },
+  'x-online-challenge': { epitaph: '挑战从来是别人的事。', backersCount: 312 },
+  'fashion-gala-redcarpet': { epitaph: '红毯走完，热度也归零。', backersCount: 880 },
+  'kol-first-live-sale': { epitaph: '第一场没卖出去，第二场也没人看。', backersCount: 412 },
+};
 
 async function main() {
   console.log('[seed] start');
@@ -53,9 +113,8 @@ async function main() {
 
   const now = new Date();
   const dayMs = 24 * 3600 * 1000;
-  const weekMs = 7 * dayMs;
 
-  // Week 45 (oldest, settled)
+  // Three weeks
   const [w45] = await db
     .insert(schema.weeks)
     .values({
@@ -65,150 +124,154 @@ async function main() {
       status: 'settled',
     })
     .returning();
-
-  // Week 46 (prior, settled)
   const [w46] = await db
     .insert(schema.weeks)
     .values({
       weekNumber: 46,
       opensAt: new Date(now.getTime() - 7 * dayMs),
-      settlesAt: new Date(now.getTime() - 2 * dayMs), // 2 days ago: just-settled
+      settlesAt: new Date(now.getTime() - 2 * dayMs),
       status: 'settled',
       editorialNotes: {
-        picks: [{ memeSlug: 'shechu-fotiaoqiang', note: '社畜文化辐射已确认' }],
+        picks: [
+          { slug: 'w46-ji-you-too-beautiful', note: '篮球视频跨圈层迁移到健身、广场舞，本质破圈' },
+        ],
       },
     })
     .returning();
-
-  // Week 47 (current, open)
   const [w47] = await db
     .insert(schema.weeks)
     .values({
       weekNumber: 47,
       opensAt: new Date(now.getTime() - 1 * dayMs),
-      settlesAt: new Date(now.getTime() + 5 * dayMs), // 5 days from now
+      settlesAt: new Date(now.getTime() + 5 * dayMs),
       status: 'open',
     })
     .returning();
+  console.log(`[seed] weeks: 45=${w45.id} 46=${w46.id} 47=${w47.id}`);
 
-  console.log(`[seed] weeks: ${w45.id}, ${w46.id}, ${w47.id}`);
+  // ---- Helpers ----
+  function memeRow(weekPrefix: string, weekId: number, m: FakeMeme, status: 'in_pool' | 'broke' | 'in_graveyard', verdictSource: 'hard' | 'editorial' | 'dead' | null) {
+    return {
+      weekId,
+      kind: 'meme' as const,
+      title: m.title,
+      slug: `${weekPrefix}-${m.slug}`,
+      sourcePlatform: m.sourcePlatform,
+      templatePattern: m.templatePattern,
+      derivativeCount: m.derivativeCount,
+      thresholdN: null,
+      topicQuestion: null,
+      firstSeenN: m.firstSeenN,
+      currentN: m.currentN,
+      oddsX: oddsForN(m.firstSeenN),
+      status,
+      verdictSource,
+      tickerBlurb: m.tickerBlurb,
+    };
+  }
 
-  // Insert memes
-  // Week 45 — old memes already in graveyard (use dead set)
-  const w45Memes = await db
-    .insert(schema.memes)
-    .values(
-      FAKE_MEMES_PRIOR_WEEK_DEAD.slice(0, 3).map((m) => ({
-        weekId: w45.id,
-        title: m.title,
-        slug: `w45-${m.slug}`,
-        sourcePlatform: m.sourcePlatform,
-        firstSeenN: m.firstSeenN,
-        currentN: m.currentN,
-        oddsX: oddsForN(m.firstSeenN),
-        status: 'in_graveyard' as const,
-        verdictSource: 'dead' as const,
-        tickerBlurb: m.tickerBlurb,
-      })),
-    )
-    .returning();
+  function topicRow(weekPrefix: string, weekId: number, t: FakeTopic, status: 'in_pool' | 'broke' | 'in_graveyard', verdictSource: 'hard' | 'editorial' | 'dead' | null) {
+    return {
+      weekId,
+      kind: 'topic' as const,
+      title: t.title,
+      slug: `${weekPrefix}-${t.slug}`,
+      sourcePlatform: t.sourcePlatform,
+      templatePattern: null,
+      derivativeCount: 0,
+      thresholdN: t.thresholdN,
+      topicQuestion: t.topicQuestion,
+      firstSeenN: t.firstSeenN,
+      currentN: t.currentN,
+      oddsX: oddsForN(t.firstSeenN),
+      status,
+      verdictSource,
+      tickerBlurb: t.tickerBlurb,
+    };
+  }
 
-  // Week 46 — mix of broke + dead
-  const w46BrokeMemes = await db
-    .insert(schema.memes)
-    .values(
-      FAKE_MEMES_PRIOR_WEEK_BROKE.map((m) => ({
-        weekId: w46.id,
-        title: m.title,
-        slug: `w46-${m.slug}`,
-        sourcePlatform: m.sourcePlatform,
-        firstSeenN: m.firstSeenN,
-        currentN: m.currentN,
-        oddsX: oddsForN(m.firstSeenN),
-        status: 'broke' as const,
-        verdictSource: m.slug === 'shechu-fotiaoqiang' ? ('editorial' as const) : ('hard' as const),
-        tickerBlurb: m.tickerBlurb,
-      })),
-    )
-    .returning();
-
-  const w46DeadMemes = await db
-    .insert(schema.memes)
-    .values(
-      FAKE_MEMES_PRIOR_WEEK_DEAD.map((m) => ({
-        weekId: w46.id,
-        title: m.title,
-        slug: `w46-${m.slug}`,
-        sourcePlatform: m.sourcePlatform,
-        firstSeenN: m.firstSeenN,
-        currentN: m.currentN,
-        oddsX: oddsForN(m.firstSeenN),
-        status: 'in_graveyard' as const,
-        verdictSource: 'dead' as const,
-        tickerBlurb: m.tickerBlurb,
-      })),
-    )
-    .returning();
-
-  // Week 47 — current pool
+  // ---- Week 47 (current open) — full pool, both kinds ----
   const w47Memes = await db
     .insert(schema.memes)
-    .values(
-      FAKE_MEMES_CURRENT_WEEK.map((m) => ({
-        weekId: w47.id,
-        title: m.title,
-        slug: `w47-${m.slug}`,
-        sourcePlatform: m.sourcePlatform,
-        firstSeenN: m.firstSeenN,
-        currentN: m.currentN,
-        oddsX: oddsForN(m.firstSeenN),
-        status: 'in_pool' as const,
-        verdictSource: null,
-        tickerBlurb: m.tickerBlurb,
-      })),
-    )
+    .values(FAKE_MEMES_CURRENT.map((m) => memeRow('w47', w47.id, m, 'in_pool', null)))
     .returning();
+  const w47Topics = await db
+    .insert(schema.memes)
+    .values(FAKE_TOPICS_CURRENT.map((t) => topicRow('w47', w47.id, t, 'in_pool', null)))
+    .returning();
+  console.log(`[seed] w47 memes=${w47Memes.length} topics=${w47Topics.length}`);
 
+  // ---- Week 46 (just settled) — broke + dead, both kinds ----
+  const w46MemeBroke = await db
+    .insert(schema.memes)
+    .values(FAKE_MEMES_PRIOR_BROKE.map((m, i) => memeRow('w46', w46.id, m, 'broke', i === 0 ? 'hard' : 'editorial')))
+    .returning();
+  const w46MemeDead = await db
+    .insert(schema.memes)
+    .values(FAKE_MEMES_PRIOR_DEAD.map((m) => memeRow('w46', w46.id, m, 'in_graveyard', 'dead')))
+    .returning();
+  const w46TopicBroke = await db
+    .insert(schema.memes)
+    .values(FAKE_TOPICS_PRIOR_BROKE.map((t) => topicRow('w46', w46.id, t, 'broke', 'hard')))
+    .returning();
+  const w46TopicDead = await db
+    .insert(schema.memes)
+    .values(FAKE_TOPICS_PRIOR_DEAD.map((t) => topicRow('w46', w46.id, t, 'in_graveyard', 'dead')))
+    .returning();
   console.log(
-    `[seed] memes: w45=${w45Memes.length}, w46=${w46BrokeMemes.length + w46DeadMemes.length}, w47=${w47Memes.length}`,
+    `[seed] w46 meme broke=${w46MemeBroke.length} dead=${w46MemeDead.length}; topic broke=${w46TopicBroke.length} dead=${w46TopicDead.length}`,
   );
 
-  // Signals
+  // ---- Signals ----
   await db.insert(schema.signals).values(FAKE_SIGNALS);
   console.log(`[seed] signals: ${FAKE_SIGNALS.length}`);
 
-  // Graveyard entries for prior-week dead memes
-  const allDead = [...w45Memes, ...w46DeadMemes];
+  // ---- Graveyard ----
+  const allDead = [...w46MemeDead, ...w46TopicDead];
   for (const meme of allDead) {
-    const ep = FAKE_GRAVEYARD.find((g) => meme.slug.endsWith(g.slug));
+    const baseSlug = meme.slug.replace(/^w\d+-/, '');
+    const ep = FAKE_EPITAPHS[baseSlug];
     await db.insert(schema.graveyard).values({
       memeId: meme.id,
       epitaph: ep?.epitaph ?? null,
       epitaphAuthorId: null,
       maxN: meme.currentN,
       backersCount: ep?.backersCount ?? Math.floor(meme.firstSeenN / 20),
-      flowersCount: ep?.backersCount ? Math.floor(ep.backersCount / 4) : 0,
+      flowersCount: ep ? Math.floor(ep.backersCount / 4) : 0,
     });
   }
   console.log(`[seed] graveyard: ${allDead.length}`);
 
-  // Mock ticker bets — null user_id, only for display
-  const memeBySlug = new Map<string, number>();
-  for (const m of w47Memes) {
-    const baseSlug = m.slug.replace(/^w47-/, '');
-    memeBySlug.set(baseSlug, m.id);
-  }
+  // ---- Mock ticker bets — on current week, both kinds ----
+  const tickerBets = [
+    { slug: 'w47-city-or-not-city', displayName: '@梗象先生', amount: 50 },
+    { slug: 'w47-city-or-not-city', displayName: '@早盘哥', amount: 20 },
+    { slug: 'w47-city-or-not-city', displayName: '@梗预言家1号', amount: 15 },
+    { slug: 'w47-you-are-right-but', displayName: '@二游研究员', amount: 25 },
+    { slug: 'w47-zundu-jiadu', displayName: '@早盘哥', amount: 20 },
+    { slug: 'w47-zundu-jiadu', displayName: '@表情包大佬', amount: 10 },
+    { slug: 'w47-breaks-defense', displayName: '@老韭菜', amount: 30 },
+    { slug: 'w47-kaiju-open', displayName: '@考公男神', amount: 25 },
+    { slug: 'w47-xindong-6-finale', displayName: '@综艺观察家', amount: 40 },
+    { slug: 'w47-xindong-6-finale', displayName: '@恋综看客', amount: 15 },
+    { slug: 'w47-duanju-divorce', displayName: '@梗象先生', amount: 30 },
+    { slug: 'w47-genshin-rerun-x', displayName: '@米家老大', amount: 20 },
+    { slug: 'w47-xz-final', displayName: '@偶像分析师', amount: 35 },
+    { slug: 'w47-movie-x-opening-day', displayName: '@影院前线', amount: 18 },
+  ];
+
+  const allCurrent = [...w47Memes, ...w47Topics];
+  const bySlug = new Map(allCurrent.map((m) => [m.slug, m]));
   let betCount = 0;
-  for (const tb of FAKE_TICKER_BETS) {
-    const memeId = memeBySlug.get(tb.memeSlug);
-    if (!memeId) continue;
-    const meme = w47Memes.find((mm) => mm.id === memeId)!;
+  for (const tb of tickerBets) {
+    const m = bySlug.get(tb.slug);
+    if (!m) continue;
     await db.insert(schema.bets).values({
       userId: null,
-      memeId,
+      memeId: m.id,
       amount: tb.amount,
-      oddsAtBet: meme.oddsX,
-      firstNAtBet: meme.firstSeenN,
+      oddsAtBet: m.oddsX,
+      firstNAtBet: m.firstSeenN,
       certificateId: `mock-${randomUUID().slice(0, 8)}`,
       settledPayout: null,
       displayName: tb.displayName,

@@ -1,5 +1,5 @@
 {
-  "id": "e57523f1-c0a3-4989-bcfd-4fe5da23efe8",
+  "id": "cabc3321-18c9-4b76-ba70-2fd0b2744983",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -693,6 +693,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'meme'"
+        },
         "title": {
           "name": "title",
           "type": "text",
@@ -717,6 +724,31 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'other'"
+        },
+        "template_pattern": {
+          "name": "template_pattern",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "derivative_count": {
+          "name": "derivative_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "threshold_n": {
+          "name": "threshold_n",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "topic_question": {
+          "name": "topic_question",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "first_seen_n": {
           "name": "first_seen_n",
@@ -800,6 +832,21 @@
           "columns": [
             {
               "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "memes_kind_idx": {
+          "name": "memes_kind_idx",
+          "columns": [
+            {
+              "expression": "kind",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
