@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { QueryProvider } from '@/components/query-provider';
 import { AuthProvider } from '@/components/auth-provider';
 import { AuthModal } from '@/components/auth-modal';
+import { ToastProvider } from '@/components/toast';
 import { TopNav } from '@/components/top-nav';
 import './globals.css';
 
@@ -17,9 +18,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <QueryProvider>
           <AuthProvider>
-            <TopNav />
-            <main className="min-h-[calc(100vh-3rem)]">{children}</main>
-            <AuthModal />
+            <ToastProvider>
+              <TopNav />
+              <main className="min-h-[calc(100vh-3rem)]">{children}</main>
+              <AuthModal />
+            </ToastProvider>
           </AuthProvider>
         </QueryProvider>
       </body>

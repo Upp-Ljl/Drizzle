@@ -5,7 +5,7 @@ import { useRequireAuth } from '@/lib/auth/use-require-auth';
 import { Button } from './ui/button';
 import { Card, CardBody, CardHeader } from './ui/card';
 import { formatN } from '@/lib/utils';
-import type { SignalRow } from '@/app/api/radar/route';
+import type { SignalRow, SignalKind } from '@/app/api/radar/route';
 
 const PLATFORM_LABEL: Record<string, string> = {
   bilibili: 'B 站',
@@ -15,17 +15,29 @@ const PLATFORM_LABEL: Record<string, string> = {
   twitter: 'X',
 };
 
-const TIER_META: Record<
-  'red' | 'yellow' | 'green',
+type TierKey = 'red' | 'yellow' | 'green';
+
+const MEME_TIER_META: Record<
+  TierKey,
   { emoji: string; title: string; sub: string }
 > = {
-  red: { emoji: '🔴', title: '异常上升', sub: 'score > 80' },
-  yellow: { emoji: '🟡', title: '边缘信号', sub: '50 < score ≤ 80' },
+  red: { emoji: '🔴', title: '二创已扩散', sub: 'score > 80' },
+  yellow: { emoji: '🟡', title: '出现跨语境模仿', sub: '50 < score ≤ 80' },
+  green: { emoji: '🟢', title: '监视中', sub: '30 < score ≤ 50' },
+};
+
+const TOPIC_TIER_META: Record<
+  TierKey,
+  { emoji: string; title: string; sub: string }
+> = {
+  red: { emoji: '🔴', title: '提及量陡升', sub: 'score > 80' },
+  yellow: { emoji: '🟡', title: '出圈讨论', sub: '50 < score ≤ 80' },
   green: { emoji: '🟢', title: '监视中', sub: '30 < score ≤ 50' },
 };
 
 type Props = {
-  tier: 'red' | 'yellow' | 'green';
+  kind: SignalKind;
+  tier: TierKey;
   signals: SignalRow[];
   weekId: number;
 };
@@ -33,9 +45,10 @@ type Props = {
 /**
  * 单档雷达 section。无信号时显示占位空状态而非整段消失。
  * 「提名」按钮走 useRequireAuth → 未登录弹模态 + 中断恢复。
+ * 文案随 kind 切换 (meme = 模板/句式扩散视角; topic = 提及量/出圈视角)。
  */
-export function SignalRadar({ tier, signals, weekId }: Props) {
-  const meta = TIER_META[tier];
+export function SignalRadar({ kind, tier, signals, weekId }: Props) {
+  const meta = (kind === 'meme' ? MEME_TIER_META : TOPIC_TIER_META)[tier];
   const requireAuth = useRequireAuth();
   const { user } = useAuth();
 
@@ -57,21 +70,26 @@ export function SignalRadar({ tier, signals, weekId }: Props) {
   }
 
   return (
-    <section aria-label={`${meta.emoji} ${meta.title}`} className="space-y-3">
+    <section
+      aria-label={`${meta.emoji} ${meta.title}`}
+      className="space-y-3"
+      data-testid={`radar-${kind}-${tier}`}
+    >
       <header className="flex items-baseline justify-between">
-        <h2 className="text-lg font-serif">
+        <h3 className="text-base font-serif">
           <span aria-hidden>{meta.emoji} </span>
           {meta.title}
-        </h2>
+        </h3>
         <span className="text-xs text-muted font-mono">{meta.sub}</span>
       </header>
 
       {signals.length === 0 ? (
-        <Card className="border-dashed">
-          <CardBody className="text-sm text-muted text-center py-6">
-            目前没有 {meta.title} 信号
-          </CardBody>
-        </Card>
+        <p
+          className="text-sm text-muted italic px-1 py-2"
+          data-testid={`tier-empty-${tier}`}
+        >
+          本档暂无信号
+        </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {signals.map((s) => (
@@ -92,7 +110,7 @@ export function SignalRadar({ tier, signals, weekId }: Props) {
                   {s.authorHandle ? (
                     <>
                       <span className="mx-1">·</span>
-                      <span>@{s.authorHandle}</span>
+                      <span>{s.authorHandle}</span>
                     </>
                   ) : null}
                   {s.authorFollowers !== null ? (
@@ -102,10 +120,15 @@ export function SignalRadar({ tier, signals, weekId }: Props) {
                     </>
                   ) : null}
                 </div>
-                <div className="text-xs text-muted">
-                  24h 增速{' '}
-                  <span className="font-mono text-forest">
-                    {(s.growth24h * 100).toFixed(0)}%
+                <div className="text-xs text-muted flex items-center gap-3">
+                  <span>
+                    24h 增速{' '}
+                    <span
+                      className="font-mono text-forest"
+                      data-testid={`growth24h-${s.id}`}
+                    >
+                      +{(s.growth24h * 100).toFixed(0)}%/24h
+                    </span>
                   </span>
                 </div>
                 <div className="pt-1">

@@ -154,6 +154,7 @@ export const signals = pgTable(
     source: text('source', {
       enum: ['bilibili', 'douyin', 'xhs', 'weibo', 'twitter'],
     }).notNull(),
+    kind: text('kind', { enum: ['meme', 'topic'] }).notNull().default('meme'),
     candidateTitle: text('candidate_title').notNull(),
     score: integer('score').notNull(),
     tier: text('tier', { enum: ['red', 'yellow', 'green'] }).notNull(),

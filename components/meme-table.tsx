@@ -4,7 +4,10 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { MemeCard } from '@/components/meme-card';
+import { MyBetDot } from '@/components/my-bet-dot';
+import { useAuth } from '@/components/auth-provider';
 import type { Kind, MemesApiResponse, MemeRow } from '@/app/api/memes/route';
+import type { MyBetsApiResponse } from '@/app/api/me/bets/route';
 
 type SortKey = 'heat' | 'odds' | 'growth';
 
@@ -39,9 +42,12 @@ const METRIC_LABEL: Record<Kind, string> = {
 /**
  * 客户端表格 — 持 sort 状态，kind-aware。
  * 数据由 server component 注入 (initial)；TanStack Query 用于后续刷新（30s staleTime）。
+ *
+ * v0.3: logged-in users see a small coral dot next to memes they've bet on.
  */
 export function MemeTable({ kind, initial }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('heat');
+  const { user } = useAuth();
 
   const { data } = useQuery<MemesApiResponse>({
     queryKey: ['memes', kind],
@@ -52,6 +58,25 @@ export function MemeTable({ kind, initial }: Props) {
     },
     initialData: initial,
   });
+
+  // Fetch user's bets to render the my-bet dot. Gracefully handle 401.
+  const { data: myBetsData } = useQuery<MyBetsApiResponse | null>({
+    queryKey: ['me', 'bets'],
+    enabled: !!user,
+    queryFn: async () => {
+      const res = await fetch('/api/me/bets', { cache: 'no-store' });
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error('failed to fetch /api/me/bets');
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+
+  const betMemeIds = useMemo(() => {
+    const set = new Set<number>();
+    for (const b of myBetsData?.bets ?? []) set.add(b.meme.id);
+    return set;
+  }, [myBetsData]);
 
   const memes = data?.memes ?? [];
   const sortOptions = SORT_LABELS_BY_KIND[kind];
@@ -84,26 +109,40 @@ export function MemeTable({ kind, initial }: Props) {
           })}
         </div>
       </div>
-      <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs text-muted uppercase tracking-wider border-b border-warmline bg-paper">
-        <span className="col-span-1">#</span>
-        <span className="col-span-5">{kind === 'meme' ? '梗' : '话题'}</span>
-        <span className="col-span-2 text-right">{METRIC_LABEL[kind]}</span>
-        <span className="col-span-2 text-right">赔率</span>
-        <span className="col-span-2 text-right">7d 增速</span>
+      <div className="overflow-x-auto">
+        <div className="min-w-[520px] text-xs sm:text-sm">
+          <div className="grid grid-cols-12 gap-2 px-4 py-2 text-[10px] sm:text-xs text-muted uppercase tracking-wider border-b border-warmline bg-paper">
+            <span className="col-span-1">#</span>
+            <span className="col-span-5">{kind === 'meme' ? '梗' : '话题'}</span>
+            <span className="col-span-2 text-right">{METRIC_LABEL[kind]}</span>
+            <span className="col-span-2 text-right">赔率</span>
+            <span className="col-span-2 text-right">7d 增速</span>
+          </div>
+          {sorted.length === 0 ? (
+            <div className="px-4 py-12 text-center text-sm text-muted">
+              {kind === 'meme'
+                ? '本周热梗候选池为空 · 等待小编上料'
+                : '本周热点话题池为空 · 等待小编上料'}
+            </div>
+          ) : (
+            <div>
+              {sorted.map((m, idx) => (
+                <div key={m.id} className="relative">
+                  <MemeCard meme={m} rank={idx + 1} kind={kind} />
+                  {betMemeIds.has(m.id) ? (
+                    <span
+                      className="pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2"
+                      aria-hidden="false"
+                    >
+                      <MyBetDot memeId={m.id} betMemeIds={betMemeIds} />
+                    </span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-      {sorted.length === 0 ? (
-        <div className="px-4 py-12 text-center text-sm text-muted">
-          {kind === 'meme'
-            ? '本周热梗候选池为空 · 等待小编上料'
-            : '本周热点话题池为空 · 等待小编上料'}
-        </div>
-      ) : (
-        <div>
-          {sorted.map((m, idx) => (
-            <MemeCard key={m.id} meme={m} rank={idx + 1} kind={kind} />
-          ))}
-        </div>
-      )}
     </Card>
   );
 }

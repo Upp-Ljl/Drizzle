@@ -11,6 +11,46 @@
   }
 }
 
+@keyframes cert-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cert-sparkle-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(110%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.cert-pop {
+  animation: cert-pop 600ms ease-out;
+}
+
+.cert-sparkle {
+  animation: cert-sparkle-spin 6s linear infinite;
+  transform-origin: center;
+}
+
 @layer components {
   .card {
     @apply bg-cream border border-warmline rounded-md shadow-card;
@@ -32,5 +72,17 @@
   }
   .btn-ghost {
     @apply btn text-muted hover:text-ink hover:bg-paper;
+  }
+}
+
+@layer utilities {
+  /* Standard horizontal container — clamps width + responsive padding. */
+  .container-x {
+    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  /* Wrap any wide block (e.g. data tables) so it scrolls horizontally
+     on narrow viewports instead of forcing the whole page to scroll. */
+  .table-wrap {
+    @apply overflow-x-auto -mx-4 sm:mx-0;
   }
 }

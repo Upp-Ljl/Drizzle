@@ -14,9 +14,11 @@
  */
 
 import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { HeatChart } from '@/components/heat-chart';
-import { BetForm } from '@/components/bet-form';
+import { BetForm, BET_SUCCESS_EVENT, type BetSuccessDetail } from '@/components/bet-form';
+import { CertificateCard } from '@/components/certificate-card';
 import { formatN } from '@/lib/utils';
 
 type RecentBet = {
@@ -65,6 +67,26 @@ export function MemeDetail({ meme, recentBets, backersCount }: Props) {
   const platform = PLATFORM_LABEL[meme.sourcePlatform] ?? meme.sourcePlatform;
   const isDead = meme.status === 'dead' || meme.status === 'in_graveyard';
   const isTopic = meme.kind === 'topic';
+
+  // Just-placed cert: listen for global bet-success event scoped to this meme.
+  const [justBet, setJustBet] = useState<BetSuccessDetail | null>(null);
+  const certAnchorRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    function onBet(e: Event) {
+      const detail = (e as CustomEvent<BetSuccessDetail>).detail;
+      if (!detail || detail.memeId !== meme.id) return;
+      setJustBet(detail);
+      // Smooth-scroll the cert into view shortly after render.
+      window.requestAnimationFrame(() => {
+        certAnchorRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      });
+    }
+    window.addEventListener(BET_SUCCESS_EVENT, onBet);
+    return () => window.removeEventListener(BET_SUCCESS_EVENT, onBet);
+  }, [meme.id]);
 
   const kindBadge = isTopic ? (
     <span className="px-2 py-0.5 rounded-sm bg-forest/15 text-forest text-[10px] font-mono uppercase tracking-wider">
@@ -243,6 +265,22 @@ export function MemeDetail({ meme, recentBets, backersCount }: Props) {
           kind={meme.kind}
           thresholdN={meme.thresholdN}
         />
+        <div ref={certAnchorRef}>
+          {justBet && (
+            <CertificateCard
+              certificateId={justBet.certificateId}
+              kind={meme.kind}
+              title={meme.title}
+              firstNAtBet={justBet.firstNAtBet}
+              thresholdN={meme.thresholdN}
+              amount={justBet.amount}
+              oddsAtBet={justBet.oddsAtBet}
+              settledPayout={null}
+              state="pending"
+              backerRank={justBet.backerRank}
+            />
+          )}
+        </div>
         <p className="text-xs text-muted leading-relaxed px-1">
           {isTopic ? (
             <>

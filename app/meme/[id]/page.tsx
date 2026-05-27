@@ -60,7 +60,7 @@ export default async function MemeDetailPage({ params }: PageProps) {
     .where(and(eq(bets.memeId, memeId), isNull(bets.cancelledAt)));
 
   return (
-    <div className="px-8 py-10 max-w-5xl mx-auto">
+    <div className="container-x py-6 sm:py-10 max-w-5xl">
       <MemeDetail
         meme={{
           id: meme.id,

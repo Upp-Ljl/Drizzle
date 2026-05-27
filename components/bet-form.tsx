@@ -8,7 +8,9 @@
  *   - If unauth: useRequireAuth() saves Intent { kind: 'bet', ... } + opens modal
  *   - After OAuth, AuthProvider fires INTENT_REPLAY_EVENT with the intent
  *   - Our effect catches it (matches by kind === 'bet' && memeId === current)
- *     and replays the bet automatically. CertificateCard renders on success.
+ *     and replays the bet automatically.
+ *   - On success: fires toast.success and a window event
+ *     `meme-weather:bet-success` so MemeDetail can render the cert.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -16,7 +18,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useRequireAuth } from '@/lib/auth/use-require-auth';
 import { INTENT_REPLAY_EVENT, type Intent } from '@/lib/auth/intent';
-import { CertificateCard } from '@/components/certificate-card';
+import { useToast } from '@/components/toast';
 
 type Props = {
   memeId: number;
@@ -29,15 +31,24 @@ type Props = {
 
 type BetResponse = {
   certificateId: string;
-  bet: { firstNAtBet: number };
+  bet: {
+    firstNAtBet: number;
+    amount: number;
+    oddsAtBet: number;
+  };
   backersCount: number;
 };
 
-type BetSuccess = {
+export type BetSuccessDetail = {
   certificateId: string;
   firstNAtBet: number;
+  amount: number;
+  oddsAtBet: number;
   backerRank: number;
+  memeId: number;
 };
+
+export const BET_SUCCESS_EVENT = 'meme-weather:bet-success';
 
 async function postBet(memeId: number, amount: number): Promise<BetResponse> {
   const res = await fetch(`/api/memes/${memeId}/bet`, {
@@ -60,7 +71,6 @@ async function postBet(memeId: number, amount: number): Promise<BetResponse> {
 
 export function BetForm({
   memeId,
-  memeTitle,
   oddsX,
   currentN,
   kind = 'meme',
@@ -69,11 +79,12 @@ export function BetForm({
   const isTopic = kind === 'topic';
   const pathname = usePathname() ?? `/meme/${memeId}`;
   const requireAuth = useRequireAuth();
+  const toast = useToast();
 
   const [amount, setAmount] = useState(10);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<BetSuccess | null>(null);
+  const [placedAmount, setPlacedAmount] = useState<number | null>(null);
   const latestAmount = useRef(amount);
   useEffect(() => {
     latestAmount.current = amount;
@@ -85,18 +96,30 @@ export function BetForm({
       setError(null);
       try {
         const res = await postBet(memeId, amt);
-        setSuccess({
+        const detail: BetSuccessDetail = {
           certificateId: res.certificateId,
           firstNAtBet: res.bet.firstNAtBet,
+          amount: res.bet.amount,
+          oddsAtBet: res.bet.oddsAtBet,
           backerRank: res.backersCount,
-        });
+          memeId,
+        };
+        setPlacedAmount(amt);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent<BetSuccessDetail>(BET_SUCCESS_EVENT, { detail }),
+          );
+        }
+        toast.success('诞生证已发到你的预测面板 →');
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'bet failed');
+        const msg = e instanceof Error ? e.message : 'bet failed';
+        setError(msg);
+        toast.error(`押注失败：${msg}`);
       } finally {
         setSubmitting(false);
       }
     },
-    [memeId],
+    [memeId, toast],
   );
 
   // Listen for intent replay (returning from OAuth)
@@ -122,25 +145,13 @@ export function BetForm({
 
   const potential = Math.round(amount * oddsX);
 
-  if (success) {
-    return (
-      <CertificateCard
-        certificateId={success.certificateId}
-        firstNAtBet={success.firstNAtBet}
-        backerRank={success.backerRank}
-        memeTitle={memeTitle}
-        state="pending"
-        kind={kind}
-        thresholdN={thresholdN}
-      />
-    );
-  }
-
   const buttonLabel = submitting
     ? '押注中…'
-    : isTopic
-      ? `押 ${amount} 币 YES`
-      : `押 ${amount} 币`;
+    : placedAmount !== null
+      ? '再押一笔'
+      : isTopic
+        ? `押 ${amount} 币 YES`
+        : `押 ${amount} 币`;
 
   const snapshotLine = isTopic
     ? `诞生证 N 值预览：押下瞬间会快照当前讨论度 N = ${currentN.toLocaleString()}${
@@ -190,6 +201,11 @@ export function BetForm({
       {error && (
         <p className="text-sm text-rust" data-testid="bet-error">
           {error}
+        </p>
+      )}
+      {placedAmount !== null && !error && (
+        <p className="text-xs text-muted" data-testid="bet-placed-hint">
+          已下注 {placedAmount} 币 · 请到右下方诞生证查看
         </p>
       )}
     </div>

@@ -33,7 +33,7 @@ export function WeatherHeader({ kind, high, low, anomaly }: Props) {
         };
 
   return (
-    <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
       <HeaderCard
         emoji={labels.high.emoji}
         label={labels.high.label}

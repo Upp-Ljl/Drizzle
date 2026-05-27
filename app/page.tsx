@@ -121,10 +121,10 @@ export default async function HomePage({
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <div className="container-x py-6 sm:py-10 space-y-5 sm:space-y-6">
       <header className="space-y-2">
         <div className="flex items-baseline justify-between flex-wrap gap-2">
-          <h1 className="text-3xl font-serif tracking-tight text-ink">今日气象</h1>
+          <h1 className="text-2xl sm:text-3xl font-serif tracking-tight text-ink">今日气象</h1>
           <Countdown
             weekNumber={initial.week?.weekNumber ?? null}
             settlesAt={initial.week?.settlesAt ?? null}

@@ -11,6 +11,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody } from '@/components/ui/card';
 import { Tombstone } from '@/components/tombstone';
+import { SkeletonRows } from '@/components/loading-skeleton';
+import { EmptyState } from '@/components/empty-state';
 import type { GraveyardApiResponse } from '@/app/api/graveyard/route';
 
 const LIMIT = 20;
@@ -32,20 +34,19 @@ export default function GraveyardPage() {
   });
 
   return (
-    <div className="px-8 py-10 max-w-5xl mx-auto space-y-6">
+    <div className="container-x py-6 sm:py-10 max-w-5xl space-y-5 sm:space-y-6">
       <header className="space-y-2">
-        <h1 className="text-3xl font-serif tracking-tight">梗坟场</h1>
+        <h1 className="text-2xl sm:text-3xl font-serif tracking-tight">梗坟场</h1>
         <p className="text-sm text-muted">
           失败梗永久档案。点墓碑展开看墓志铭与献花,献花需登录。
         </p>
       </header>
 
       {isLoading && (
-        <Card>
-          <CardBody className="text-sm text-muted text-center py-10">
-            正在挖掘…
-          </CardBody>
-        </Card>
+        <div className="space-y-3" data-testid="graveyard-loading">
+          <p className="text-xs text-muted font-mono">正在挖掘…</p>
+          <SkeletonRows count={4} />
+        </div>
       )}
 
       {isError && (
@@ -57,11 +58,11 @@ export default function GraveyardPage() {
       )}
 
       {data && data.items.length === 0 && (
-        <Card>
-          <CardBody className="text-sm text-muted text-center py-10">
-            这里安静得很 —— 还没有梗入坟。
-          </CardBody>
-        </Card>
+        <EmptyState
+          icon="🪦"
+          title="坟场空空"
+          sub="本周还没人凉透 —— 周日结算后失败梗会迁入这里。"
+        />
       )}
 
       {data && data.items.length > 0 && (

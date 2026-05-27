@@ -33,6 +33,7 @@ import {
 } from '../memes/sources/fake-topics';
 import { oddsForN } from '../memes/score';
 import { randomUUID } from 'node:crypto';
+import { ALL_FAKE_SIGNALS } from '../memes/sources/fake-signals';
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error('DATABASE_URL is not set');
@@ -40,53 +41,7 @@ if (!url) throw new Error('DATABASE_URL is not set');
 const sql = postgres(url, { prepare: false, max: 5 });
 const db = drizzle(sql, { schema });
 
-const FAKE_SIGNALS = [
-  {
-    source: 'bilibili' as const,
-    candidateTitle: '"X 也是有上限的"',
-    score: 92,
-    tier: 'red' as const,
-    authorHandle: '@老六本六',
-    authorFollowers: 1_820,
-    growth24h: 4.8,
-  },
-  {
-    source: 'xhs' as const,
-    candidateTitle: '"我妈让我先 X 再 Y"',
-    score: 76,
-    tier: 'yellow' as const,
-    authorHandle: '@老母亲日记',
-    authorFollowers: 12_400,
-    growth24h: 2.1,
-  },
-  {
-    source: 'douyin' as const,
-    candidateTitle: '"X，但是 Y" 反差体',
-    score: 64,
-    tier: 'yellow' as const,
-    authorHandle: '@错位男孩',
-    authorFollowers: 8_100,
-    growth24h: 1.7,
-  },
-  {
-    source: 'weibo' as const,
-    candidateTitle: '"X 我的命名权我做主"',
-    score: 41,
-    tier: 'green' as const,
-    authorHandle: null,
-    authorFollowers: null,
-    growth24h: 0.9,
-  },
-  {
-    source: 'bilibili' as const,
-    candidateTitle: '"内娱已经 X 到 Y 了"',
-    score: 35,
-    tier: 'green' as const,
-    authorHandle: '@饭圈老妖',
-    authorFollowers: 940,
-    growth24h: 0.6,
-  },
-];
+const FAKE_SIGNALS = ALL_FAKE_SIGNALS;
 
 const FAKE_EPITAPHS: Record<string, { epitaph: string; backersCount: number }> = {
   'dog-goes-to-work': { epitaph: '狗上班那天，梗也下班了。', backersCount: 1_247 },
