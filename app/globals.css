@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-cream border border-warmline rounded-md shadow-card;
+  }
+  .card-header {
+    @apply px-4 py-2.5 border-b border-warmline text-sm font-medium;
+  }
+  .label {
+    @apply text-xs text-muted font-sans uppercase tracking-wider mb-1;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-coral text-cream hover:bg-rust;
+  }
+  .btn-secondary {
+    @apply btn bg-cream border border-warmline text-ink hover:bg-paper;
+  }
+  .btn-ghost {
+    @apply btn text-muted hover:text-ink hover:bg-paper;
+  }
+}
